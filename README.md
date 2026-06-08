@@ -1,24 +1,27 @@
 # outreach-pipeline
 
-One seed domain in → lookalike companies → decision-makers → verified emails → personalized outreach via Brevo. Zero manual steps after input, except one confirmation gate before emails fire.
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![CI](https://github.com/Tattaisreeram/outreach-pipeline/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+A fully automated cold-outreach CLI: give it one seed domain and it finds lookalike companies, surfaces decision-makers with verified emails, writes AI-personalized copy via Claude, and sends through Brevo — with one human confirmation gate before anything fires.
 
 ```
 seed domain
     │
     ▼
 ┌─────────────┐
-│  Ocean.io   │  find up to 3 lookalike companies by domain
+│  Ocean.io   │  up to 3 lookalike companies by domain similarity
 └──────┬──────┘
        │ [company domains]
        ▼
 ┌─────────────┐
-│  Prospeo    │  search-person → C-Level/VP/Director
-│             │  enrich-person → verified email only
+│  Hunter.io  │  domain search → executive contacts + verified emails
 └──────┬──────┘
        │ [Person records]
        ▼
 ┌─────────────┐
-│  emails.py  │  build personalized subject + HTML body
+│  Claude API │  AI-personalized subject + body (template fallback)
 └──────┬──────┘
        │
        ▼
@@ -33,74 +36,69 @@ seed domain
 └─────────────┘
 ```
 
-## Setup
+## Quickstart
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+copy .env.example .env   # then fill in your keys
+python main.py stripe.com --dry-run
 ```
 
-Copy `.env.example` to `.env` and fill in your keys:
+## .env keys
 
-```
-OCEAN_API_TOKEN=
-PROSPEO_API_KEY=
-BREVO_API_KEY=          # v3 API key — NOT the SMTP key
-BREVO_SENDER_EMAIL=you@yourdomain.com
-BREVO_SENDER_NAME=Your Name
-DEMO_RECIPIENT=you@yourdomain.com
-```
-
-## Smoke-test APIs before running
-
-```powershell
-# Brevo
-curl.exe -s -H "api-key: $env:BREVO_API_KEY" https://api.brevo.com/v3/account
-
-# Prospeo
-curl.exe -s -X POST -H "X-KEY: $env:PROSPEO_API_KEY" -H "Content-Type: application/json" -d '{}' https://api.prospeo.io/account-information
-
-# Ocean (paste raw key if env var not set in session)
-curl.exe -s -X POST "https://api.ocean.io/v2/search/companies?apiToken=$env:OCEAN_API_TOKEN" -H "Content-Type: application/json" -d '{\"size\":1,\"companiesFilters\":{\"lookalikeDomains\":[\"stripe.com\"]}}'
-```
+| Variable | Required | Notes |
+|---|---|---|
+| `OCEAN_API_TOKEN` | yes | ocean.io API token |
+| `HUNTER_API_KEY` | yes | hunter.io API key (free: 25 searches/mo) |
+| `BREVO_API_KEY` | yes | v3 API key — **not** the SMTP key |
+| `BREVO_SENDER_EMAIL` | yes | verified sender address in Brevo |
+| `BREVO_SENDER_NAME` | yes | display name for outgoing mail |
+| `DEMO_RECIPIENT` | yes | safe inbox for dev sends |
+| `ANTHROPIC_API_KEY` | optional | enables AI copy; falls back to template if absent |
 
 ## Run commands
 
 ```powershell
-# Dry run — all stages execute, summary printed, nothing sent
+# Dry run — all stages, prints table, sends nothing
 python main.py stripe.com --dry-run
 
-# Send to your DEMO_RECIPIENT inbox (safe for dev)
+# Send to your own inbox (safe default, gate required)
 python main.py stripe.com
 
-# Send to real prospect emails (production)
+# Send to real prospect emails
 python main.py stripe.com --send-real
 
-# Limit to fewer companies
+# Limit company count
 python main.py stripe.com --limit-companies 2
 ```
 
-## Test individual stages
+## Tests
 
 ```powershell
-python -m stages.ocean stripe.com
-python -m stages.prospeo stripe.com
-python -m stages.brevo          # sends one test email to DEMO_RECIPIENT
+pytest tests/ -v
 ```
+
+All 14 tests are fully mocked — no API keys needed.
 
 ## Cache
 
-All stage outputs are written under `cache/` (git-ignored):
+Stage outputs are written to `cache/` (git-ignored) so reruns skip API calls:
 
 - `cache/lookalikes_<seed>.json`
-- `cache/people_<domain>.json`
+- `cache/hunter_<domain>.json`
 
-Delete a file to force a fresh API call for that stage.
+Delete a file to force a fresh fetch for that stage.
 
-## Known limitations
+## Per-run reports
 
-- **Brevo DKIM propagation** — new sender domains may route through `brevosend.com` until DNS propagates. Emails still deliver; the From header may show the rewrite.
-- **Free-tier credit caps** — Prospeo free tier: ~75 enrichments. Ocean free tier: limited searches. The pipeline caps at 3 companies x 2 people = 6 enrichments max per run.
-- **Ocean signup blocks** — if Ocean.io access is unavailable, replace `stages/ocean.py` with a call to Prospeo's Search Company endpoint and note it in the run.
-- **Only verified emails** — Prospeo's `only_verified_email: true` means contacts without a confirmed address are silently dropped. This is intentional; it protects sender reputation.
+Each run writes a JSON summary to `runs/<timestamp>.json` (git-ignored) with seed domain, companies found, people found, emails sent, and status.
+
+## Known limitations / design decisions
+
+- **Ocean free tier** — lookalike search returns 403 on the free plan; the pipeline falls back to running on the seed domain itself.
+- **Hunter free tier** — 25 domain searches/month. Each `python main.py` run uses 1 search per company (cached on rerun).
+- **Brevo DKIM** — new sender domains may show `brevosend.com` in headers until DNS propagates; emails still deliver.
+- **Why Hunter over Prospeo** — Hunter returns verified emails directly in the domain-search response (no separate enrich step), making it far more free-tier friendly. Prospeo's enrich endpoint has an aggressive hourly rate limit on free accounts.
+- **AI copy fallback** — if `ANTHROPIC_API_KEY` is absent or the Claude call fails for any reason, the pipeline silently falls back to the built-in template so the demo never breaks.

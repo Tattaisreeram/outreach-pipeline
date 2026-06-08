@@ -115,7 +115,7 @@ def find_people(domain: str) -> list[Person]:
             enriched = resolve_email(candidate, person_id=person_id)
         except requests.HTTPError as exc:
             if "429" in str(exc):
-                print(f"  [prospeo] rate limited – stopping enrich, retry later")
+                print("  [prospeo] rate limited – stopping enrich, retry later")
                 break
             print(f"  [prospeo] enrich error for {full_name}: {exc}")
             continue

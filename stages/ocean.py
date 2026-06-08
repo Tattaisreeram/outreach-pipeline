@@ -54,7 +54,7 @@ def _fetch(seed_domain: str, api_token: str) -> list[str]:
                 timeout=20,
             )
             if resp.status_code == 403:
-                raise requests.HTTPError(f"403 Forbidden – Ocean free tier may not include lookalikes", response=resp)
+                raise requests.HTTPError("403 Forbidden – Ocean free tier may not include lookalikes", response=resp)
             if resp.status_code in (429, 500, 502, 503, 504):
                 wait = 2 ** attempt
                 print(f"  [ocean] {resp.status_code} – retrying in {wait}s")

@@ -1,6 +1,7 @@
 """Unit tests — all HTTP mocked, no real API calls."""
 from __future__ import annotations
 import json
+import re
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -134,8 +135,6 @@ def test_hunter_parse_skips_invalid_verification(tmp_path):
 
 
 # ── domain validation ─────────────────────────────────────────────────────────
-
-import re
 
 _DOMAIN_RE = re.compile(r"^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$")
 
