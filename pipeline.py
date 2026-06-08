@@ -7,7 +7,8 @@ from rich.table import Table
 
 import config
 import emails
-from stages import ocean, prospeo, brevo
+from stages import ocean, brevo
+from stages import hunter
 from stages.prospeo import Person
 
 console = Console()
@@ -54,7 +55,7 @@ def run(
 
     for domain in domains:
         try:
-            people = prospeo.find_people(domain)
+            people = hunter.find_people(domain)
         except Exception as exc:
             console.print(f"  [red]Skipping {domain}: {exc}")
             continue
