@@ -139,9 +139,8 @@ def run(
 
     # ── Gate ──────────────────────────────────────────────────────────────────
     target_label = "real prospects" if send_real else f"DEMO_RECIPIENT ({config.DEMO_RECIPIENT})"
-    answer = console.input(
-        f"\n[bold]Send {len(rows)} email(s) to {target_label}? [y/N][/bold] "
-    ).strip().lower()
+    console.print(f"\n[bold]Send {len(rows)} email(s) to {target_label}? [y/N][/bold] ", end="")
+    answer = input().strip().lower()
 
     if answer != "y":
         log.info("User aborted at gate")
