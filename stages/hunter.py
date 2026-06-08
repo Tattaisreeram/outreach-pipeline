@@ -26,7 +26,7 @@ def find_people(domain: str) -> list[Person]:
     params = {
         "domain": domain,
         "api_key": config.HUNTER_API_KEY,
-        "limit": 20,
+        "limit": 10,
         "seniority": "executive",
         "type": "personal",
     }

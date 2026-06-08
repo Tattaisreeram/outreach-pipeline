@@ -185,5 +185,5 @@ def _write_report(data: dict) -> None:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = RUNS_DIR / f"run_{ts}.json"
     path.write_text(json.dumps(data, indent=2))
-    log.info("Run report saved → %s", path)
-    console.print(f"  [dim]Report saved → {path}[/dim]")
+    log.info("Run report saved -> %s", path)
+    console.print(f"  [dim]Report saved -> {path}[/dim]")
